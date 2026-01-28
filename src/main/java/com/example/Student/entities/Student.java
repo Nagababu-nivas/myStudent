@@ -16,6 +16,10 @@ public class Student {
 	private Integer id;
 	private String name;
 	private String dept;
+
+	public Student() {
+		
+	}
 	
 	public Student(Integer id, String name, String dept) {
 		this.id = id;
