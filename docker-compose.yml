@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: student_db
+    environment:
+      POSTGRES_DB: studentdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    # Expose 5432 only if you need to connect from the host or Playground UI
+    # On shared environments, you can comment this out for less surface:
+    # ports:
+    #   - "5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d studentdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20   # slightly higher for slower Playground nodes
+    restart: unless-stopped  # optional resilience
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: student_app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Override application.properties so the app uses Docker DNS host 'db'
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/studentdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: root
+
+      # Keep JPA settings consistent
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      SPRING_JPA_SHOW_SQL: "true"
+
+      # Optional, if you want to set the app name via env:
+      # SPRING_APPLICATION_NAME: com.nb.example.Student
+
+      SERVER_PORT: "8080"
+      # JAVA_OPTS: "-Xms128m -Xmx384m"  # helpful on small Playground VMs
+
+    ports:
+      - "8080:8080"
+    restart: unless-stopped  # optional
+
+volumes:
+  dbdata:
